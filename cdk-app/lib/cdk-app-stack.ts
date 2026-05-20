@@ -3,10 +3,16 @@ import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 
 export class CdkAppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    // Fetch cache endpoint from SSM (required for new caching layer)
+    const cacheEndpoint = ssm.StringParameter.valueForStringParameter(
+      this, '/prod/cache/redis-endpoint'
+    );
 
     // DynamoDB Table
     const table = new dynamodb.Table(this, 'ItemsTable', {
@@ -22,6 +28,7 @@ export class CdkAppStack extends cdk.Stack {
       code: lambda.Code.fromAsset('lambda-dist'),
       environment: {
         TABLE_NAME: table.tableName,
+        CACHE_ENDPOINT: cacheEndpoint,
       },
     });
 

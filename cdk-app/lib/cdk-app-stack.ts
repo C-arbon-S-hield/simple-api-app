@@ -9,10 +9,11 @@ export class CdkAppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Fetch cache endpoint from SSM (required for new caching layer)
-    const cacheEndpoint = ssm.StringParameter.valueForStringParameter(
+    // Fetch cache endpoint from SSM; falls back to empty string if the parameter
+    // does not yet exist, so the stack can be deployed before Redis is provisioned.
+    const cacheEndpoint = ssm.StringParameter.valueFromLookup(
       this, '/prod/cache/redis-endpoint'
-    );
+    ) ?? '';
 
     // DynamoDB Table
     const table = new dynamodb.Table(this, 'ItemsTable', {

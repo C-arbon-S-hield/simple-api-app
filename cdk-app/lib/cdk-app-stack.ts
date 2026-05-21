@@ -3,16 +3,18 @@ import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
 
 export class CdkAppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Fetch cache endpoint from SSM (required for new caching layer)
-    const cacheEndpoint = ssm.StringParameter.valueForStringParameter(
-      this, '/prod/cache/redis-endpoint'
-    );
+    // Read the Redis cache endpoint from CDK context so deployment succeeds
+    // before the cluster is provisioned.  Provide the real endpoint by passing
+    // -c cacheEndpoint=<host:port> on the `cdk deploy` command line, or leave
+    // it empty to run without caching until /prod/cache/redis-endpoint is added
+    // to SSM and the stack is updated.
+    const cacheEndpoint: string =
+      this.node.tryGetContext('cacheEndpoint') ?? '';
 
     // DynamoDB Table
     const table = new dynamodb.Table(this, 'ItemsTable', {

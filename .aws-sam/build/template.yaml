@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  ItemsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:
+        Fn::Sub: ${AWS::StackName}-items
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.handler
+      Runtime: python3.11
+      CodeUri: ApiFunction
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Ref: ItemsTable
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: ItemsTable
+      Events:
+        GetItems:
+          Type: Api
+          Properties:
+            Path: /items
+            Method: get
+        CreateItem:
+          Type: Api
+          Properties:
+            Path: /items
+            Method: post
+        GetItem:
+          Type: Api
+          Properties:
+            Path: /items/{id}
+            Method: get
+    Metadata:
+      SamResourceId: ApiFunction
+Outputs:
+  ApiUrl:
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/

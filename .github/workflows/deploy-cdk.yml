@@ -1,0 +1,51 @@
+name: Deploy CDK App
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cdk-app/**'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-west-2
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    defaults:
+      run:
+        working-directory: cdk-app
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build Lambda
+        run: npx esbuild lambda/index.ts --bundle --platform=node --target=node20 --outdir=lambda-dist --external:@aws-sdk/*
+      
+      - name: Build CDK
+        run: npm run build
+      
+      - name: CDK Bootstrap
+        run: npx cdk bootstrap aws://549725144537/${{ env.AWS_REGION }} || true
+      
+      - name: CDK Deploy
+        run: npx cdk deploy --all --require-approval never

@@ -7,6 +7,7 @@ API backed by DynamoDB, deployed via GitHub Actions to AWS.
 - `GET /items` - List all items
 - `POST /items` - Create item (body: `{"id": "123", "name": "example"}`)
 - `GET /items/{id}` - Get specific item
+- `DELETE /items/{id}` - Delete item (publishes audit event to SNS)
 
 ## Setup
 

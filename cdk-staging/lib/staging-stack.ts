@@ -1,41 +1,35 @@
 import * as cdk from 'aws-cdk-lib';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 
 export class StagingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Cross-account replication role for disaster recovery
-    // This role needs to be assumable by the DR account (111222333444)
-    const drReplicationRole = new iam.Role(this, 'DRReplicationRole', {
-      roleName: 'staging-dr-replication-role',
-      assumedBy: new iam.CompositePrincipal(
-        new iam.AccountPrincipal('111222333444'),
-        new iam.ServicePrincipal('lambda.amazonaws.com'),
-      ),
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'),
-      ],
+    // Cross-account ECR image for the data-sync microservice
+    // Image is built and pushed by the Platform team (account 887321449012)
+    const ecrRepo = ecr.Repository.fromRepositoryAttributes(this, 'PlatformSyncRepo', {
+      repositoryArn: 'arn:aws:ecr:us-west-2:887321449012:repository/platform/data-sync',
+      repositoryName: 'platform/data-sync',
     });
 
-    // Lambda that performs cross-account data sync
-    const syncFunction = new lambda.Function(this, 'DataSyncFunction', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromInline(`
-        const { STSClient, AssumeRoleCommand } = require('@aws-sdk/client-sts');
-        exports.handler = async () => {
-          const sts = new STSClient({ region: 'us-west-2' });
-          await sts.send(new AssumeRoleCommand({
-            RoleArn: 'arn:aws:iam::111222333444:role/dr-target-role',
-            RoleSessionName: 'data-sync'
-          }));
-        };
-      `),
-      role: drReplicationRole,
+    const syncFunction = new lambda.DockerImageFunction(this, 'DataSyncFunction', {
+      code: lambda.DockerImageCode.fromEcr(ecrRepo, { tagOrDigest: 'v2.4.1-stable' }),
       timeout: cdk.Duration.minutes(5),
+      memorySize: 512,
+      environment: {
+        SYNC_TARGET_REGION: 'us-east-1',
+        SYNC_MODE: 'incremental',
+      },
+    });
+
+    new logs.LogGroup(this, 'SyncLogs', {
+      logGroupName: `/aws/lambda/${syncFunction.functionName}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
   }
 }

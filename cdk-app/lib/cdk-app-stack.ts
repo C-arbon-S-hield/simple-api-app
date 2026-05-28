@@ -9,10 +9,34 @@ export class CdkAppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Fetch cache endpoint from SSM (required for new caching layer)
-    const cacheEndpoint = ssm.StringParameter.valueForStringParameter(
-      this, '/prod/cache/redis-endpoint'
-    );
+    // Determine deployment stage from CDK context or env var (defaults to 'staging').
+    // This avoids hardcoding the '/prod/' SSM prefix when deploying to non-prod
+    // environments such as the 'staging' GitHub Actions environment.
+    const stage: string =
+      (this.node.tryGetContext('stage') as string | undefined) ??
+      process.env.DEPLOY_STAGE ??
+      'staging';
+
+    // Cache endpoint lookup is opt-in. The SSM parameter must exist in the
+    // target account/region before enabling. To enable, pass
+    // `-c cacheEnabled=true` (or set CACHE_ENABLED=true) once the parameter
+    // `/<stage>/cache/redis-endpoint` has been provisioned. When disabled,
+    // the Lambda receives an empty CACHE_ENDPOINT and must handle that
+    // gracefully (cache layer becomes a no-op).
+    const cacheEnabledCtx =
+      (this.node.tryGetContext('cacheEnabled') as string | boolean | undefined) ??
+      process.env.CACHE_ENABLED;
+    const cacheEnabled =
+      cacheEnabledCtx === true ||
+      cacheEnabledCtx === 'true' ||
+      cacheEnabledCtx === '1';
+
+    const cacheEndpoint = cacheEnabled
+      ? ssm.StringParameter.valueForStringParameter(
+          this,
+          `/${stage}/cache/redis-endpoint`
+        )
+      : '';
 
     // DynamoDB Table
     const table = new dynamodb.Table(this, 'ItemsTable', {

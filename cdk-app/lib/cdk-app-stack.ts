@@ -5,13 +5,27 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 
+export interface CdkAppStackProps extends cdk.StackProps {
+  /**
+   * Deployment stage name (e.g. 'staging', 'prod'). Used to namespace
+   * environment-specific SSM parameters such as the cache endpoint.
+   * If not provided, falls back to the `stage` CDK context value, then 'prod'.
+   */
+  readonly stageName?: string;
+}
+
 export class CdkAppStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: CdkAppStackProps) {
     super(scope, id, props);
 
-    // Fetch cache endpoint from SSM (required for new caching layer)
+    // Resolve the deployment stage. Precedence: explicit prop > CDK context (`-c stage=...`) > 'prod'.
+    const stageName: string =
+      props?.stageName ?? (this.node.tryGetContext('stage') as string | undefined) ?? 'prod';
+
+    // Fetch cache endpoint from SSM, namespaced by stage so non-prod accounts
+    // are not forced to read `/prod/...` parameters that don't exist there.
     const cacheEndpoint = ssm.StringParameter.valueForStringParameter(
-      this, '/prod/cache/redis-endpoint'
+      this, `/${stageName}/cache/redis-endpoint`
     );
 
     // DynamoDB Table

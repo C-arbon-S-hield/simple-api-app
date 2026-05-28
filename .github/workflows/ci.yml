@@ -1,0 +1,21 @@
+name: CI
+on: [pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cdk-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - name: Build Lambda
+        run: npx esbuild lambda/index.ts --bundle --platform=node --target=node20 --outdir=lambda-dist --external:@aws-sdk/*
+      - name: Build CDK
+        run: npm run build
+      - name: Test
+        run: npm test

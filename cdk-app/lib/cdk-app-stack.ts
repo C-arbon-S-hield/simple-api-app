@@ -21,6 +21,9 @@ export class CdkAppStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    // ElastiCache cluster for caching
+    const cachePort: number = "6379";
+
     // Lambda Function (using AssetCode for pre-bundled code)
     const apiFunction = new lambda.Function(this, 'ApiFunction', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -28,6 +31,7 @@ export class CdkAppStack extends cdk.Stack {
       code: lambda.Code.fromAsset('lambda-dist'),
       environment: {
         TABLE_NAME: table.tableName,
+        CACHE_PORT: cachePort,
         CACHE_ENDPOINT: cacheEndpoint,
       },
     });

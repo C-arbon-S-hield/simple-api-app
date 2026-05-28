@@ -9,10 +9,25 @@ export class CdkAppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Fetch cache endpoint from SSM (required for new caching layer)
-    const cacheEndpoint = ssm.StringParameter.valueForStringParameter(
-      this, '/prod/cache/redis-endpoint'
-    );
+    // Resolve the cache endpoint. The SSM path is environment-specific, so it
+    // is provided via CDK context (`-c cacheEndpointSsmParam=/staging/cache/redis-endpoint`)
+    // or the `CACHE_ENDPOINT_SSM_PARAM` env var. If neither is set, we fall
+    // back to a literal value from `cacheEndpoint` context / `CACHE_ENDPOINT`
+    // env var, defaulting to an empty string so the stack can synthesize
+    // without requiring an SSM parameter to exist in the target account.
+    //
+    // Previously this was hard-coded to `/prod/cache/redis-endpoint`, which
+    // caused CloudFormation to fail resolving the parameter when deploying
+    // to the staging account where it does not exist.
+    const ssmParamName =
+      (this.node.tryGetContext('cacheEndpointSsmParam') as string | undefined) ??
+      process.env.CACHE_ENDPOINT_SSM_PARAM;
+
+    const cacheEndpoint = ssmParamName
+      ? ssm.StringParameter.valueForStringParameter(this, ssmParamName)
+      : ((this.node.tryGetContext('cacheEndpoint') as string | undefined) ??
+          process.env.CACHE_ENDPOINT ??
+          '');
 
     // DynamoDB Table
     const table = new dynamodb.Table(this, 'ItemsTable', {

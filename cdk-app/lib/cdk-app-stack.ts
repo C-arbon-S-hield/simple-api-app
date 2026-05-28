@@ -9,10 +9,15 @@ export class CdkAppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Fetch cache endpoint from SSM (required for new caching layer)
-    const cacheEndpoint = ssm.StringParameter.valueForStringParameter(
+    // Fetch cache endpoint from SSM (optional – falls back to empty string when
+    // the parameter has not yet been provisioned, e.g. in staging environments
+    // where the Redis/ElastiCache cluster does not exist yet).
+    // valueFromLookup resolves at CDK synth time and returns a dummy token
+    // instead of blocking the CloudFormation changeset creation like
+    // valueForStringParameter does.
+    const cacheEndpoint = ssm.StringParameter.valueFromLookup(
       this, '/prod/cache/redis-endpoint'
-    );
+    ) || '';
 
     // DynamoDB Table
     const table = new dynamodb.Table(this, 'ItemsTable', {

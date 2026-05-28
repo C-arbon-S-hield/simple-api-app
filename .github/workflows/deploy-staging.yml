@@ -1,0 +1,48 @@
+name: Deploy Staging DR
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cdk-staging/**'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-west-2
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    defaults:
+      run:
+        working-directory: cdk-staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: CDK Bootstrap
+        run: npx cdk bootstrap aws://549725144537/${{ env.AWS_REGION }} || true
+
+      - name: CDK Deploy
+        run: npx cdk deploy --all --require-approval never

@@ -1,0 +1,18 @@
+{
+  "name": "cdk-staging",
+  "version": "0.1.0",
+  "bin": { "cdk-staging": "bin/app.js" },
+  "scripts": {
+    "build": "tsc",
+    "cdk": "cdk"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.215.0",
+    "constructs": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "~5.9.3",
+    "aws-cdk": "2.1033.0"
+  }
+}

@@ -30,7 +30,7 @@ export class CdkAppStack extends cdk.Stack {
 
     // Lambda Function (using AssetCode for pre-bundled code)
     const apiFunction = new lambda.Function(this, 'ApiFunction', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_2_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset('lambda-dist'),
       environment: {

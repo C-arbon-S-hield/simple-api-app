@@ -21,6 +21,9 @@ export class CdkAppStack extends cdk.Stack {
       this, `/${envName}/cache/redis-endpoint`
     );
 
+    // ElastiCache cluster for caching
+    const cachePort: number = "6379";
+    
     // DynamoDB Table
     const table = new dynamodb.Table(this, 'ItemsTable', {
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
@@ -35,6 +38,7 @@ export class CdkAppStack extends cdk.Stack {
       code: lambda.Code.fromAsset('lambda-dist'),
       environment: {
         TABLE_NAME: table.tableName,
+        CACHE_PORT: cachePort,
         CACHE_ENDPOINT: cacheEndpoint,
       },
     });

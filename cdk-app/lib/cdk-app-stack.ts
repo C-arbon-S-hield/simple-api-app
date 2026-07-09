@@ -9,7 +9,7 @@ export class CdkAppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Fetch cache endpoint from SSM (required for new caching layer).
+    // Fetch cache endpoint from SSM (required for the new caching layer).
     // The SSM parameter path is namespaced by environment so the same stack
     // can be deployed to staging/prod without hardcoding a single path.
     // Resolution order: CDK context `env` -> CDK_ENV env var -> 'staging' default.
@@ -18,7 +18,7 @@ export class CdkAppStack extends cdk.Stack {
       process.env.CDK_ENV ||
       'staging';
     const cacheEndpoint = ssm.StringParameter.valueForStringParameter(
-      this, `/${envName}/cache/redis-endpoint`
+      this, `/${envName}/cache/reds-endpoint`
     );
 
     // DynamoDB Table
